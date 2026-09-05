@@ -55,7 +55,7 @@ class StudioApplication : Application() {
     val verificationWebState by lazy { VerificationWebViewStateStore(this) }
     val runtimeConfig by lazy { RuntimeConfigStore(this) }
     val httpLogs by lazy { HttpLogRecorder(this, database.dao(), gson) }
-    val fetcher by lazy { HttpFetcher(cookieStore::headerFor, httpLogs, runtimeConfig::userAgent) }
+    val fetcher by lazy { HttpFetcher(cookieStore::headerFor, httpLogs, runtimeConfig::userAgent, { runtimeConfig.bookSourceType }) }
     val webViewLoader by lazy { WebViewPageLoader(this, runtimeConfig::userAgent) }
     val verification by lazy { VerificationCoordinator(this, database.dao(), cookieStore, verificationWebState) }
     val analyzer by lazy { HtmlAnalyzer() }

@@ -15,6 +15,7 @@ class HttpFetcher(
     private val cookieHeaderProvider: (String) -> String? = { null },
     private val logRecorder: HttpLogRecorder? = null,
     private val userAgentProvider: () -> String = { DEFAULT_UA },
+    private val sourceTypeProvider: () -> Int = { 0 },
 ) {
     data class FetchRequest(
         val url: String? = null,
@@ -32,6 +33,8 @@ class HttpFetcher(
         @SerializedName("body") val body: String,
         @SerializedName("elapsedMs") val elapsedMs: Long,
         @SerializedName("redirectChain") val redirectChain: List<String> = emptyList(),
+        @SerializedName("bodyNote") val bodyNote: String = "",
+        @SerializedName("binaryBytes") val binaryBytes: Long = 0,
     )
 
     fun fetch(input: FetchRequest): FetchResult {
@@ -64,16 +67,31 @@ class HttpFetcher(
         val started = System.currentTimeMillis()
         try {
             return client.newCall(request).execute().use { response ->
+                val finalUrl = response.request.url.toString()
+                val responseHeaders = response.headers.toMultimap().mapValues { it.value.joinToString("; ") }
+                val redirectChain = generateSequence(response.priorResponse) { it.priorResponse }.toList().asReversed().map { it.request.url.toString() } + finalUrl
+                val elapsed = System.currentTimeMillis() - started
+                val requestHeaders = headers.toMultimap().mapValues { it.value.joinToString("; ") }
+                // 按当前书源类型处理二进制响应:不下载正文,避免图片/音视频等不相干内容进入解析与日志
+                if (method != "HEAD" && isBinaryContent(response.body.contentType()?.toString(), finalUrl)) {
+                    val contentLength = response.body.contentLength().coerceAtLeast(0)
+                    response.body.close()
+                    val sourceType = sourceTypeProvider().coerceIn(0, 4)
+                    val sizeText = if (contentLength > 0) "，大小约 ${contentLength / 1024} KB" else ""
+                    val note = if (sourceType == 0) {
+                        "已按当前书源类型（文本）跳过二进制资源，未下载正文$sizeText；制作音频/图片/文件/视频书源请到 MCP 页切换书源类型"
+                    } else {
+                        "二进制资源（当前书源类型：${RuntimeConfigStore.typeName(sourceType)}）$sizeText，未下载正文；书源规则只需引用该 URL"
+                    }
+                    logRecorder?.record(HttpLogRecorder.Draft(method, url, finalUrl, response.code, elapsed, requestHeaders, responseHeaders, input.body.orEmpty(), note, redirectChain = redirectChain))
+                    return FetchResult(response.code, finalUrl, responseHeaders, "", elapsed, redirectChain, note, contentLength)
+                }
                 val bytes = response.body.bytes()
                 val charset = input.charset?.let { runCatching { Charset.forName(it) }.getOrNull() }
                     ?: response.body.contentType()?.charset()
                     ?: detectCharset(bytes)
-                val finalUrl = response.request.url.toString()
                 val text = bytes.toString(charset)
-                val responseHeaders = response.headers.toMultimap().mapValues { it.value.joinToString("; ") }
-                val redirectChain = generateSequence(response.priorResponse) { it.priorResponse }.toList().asReversed().map { it.request.url.toString() } + finalUrl
-                val elapsed = System.currentTimeMillis() - started
-                logRecorder?.record(HttpLogRecorder.Draft(method, url, finalUrl, response.code, elapsed, headers.toMultimap().mapValues { it.value.joinToString("; ") }, responseHeaders, input.body.orEmpty(), text, redirectChain = redirectChain))
+                logRecorder?.record(HttpLogRecorder.Draft(method, url, finalUrl, response.code, elapsed, requestHeaders, responseHeaders, input.body.orEmpty(), text, redirectChain = redirectChain))
                 if (looksLikeVerification(response.code, finalUrl, text)) {
                     throw com.mina.legadostudio.verification.VerificationRequiredException(finalUrl, response.request.url.host)
                 }
@@ -101,5 +119,37 @@ class HttpFetcher(
 
     companion object {
         const val DEFAULT_UA = "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/150 Mobile Safari/537.36"
+
+        /** 可按文本读取的 Content-Type(m3u8 清单是文本,视频源制作需要读取)。 */
+        private val TEXTUAL_TYPES = setOf(
+            "application/json", "application/xml", "application/javascript", "application/ecmascript",
+            "application/x-javascript", "application/x-www-form-urlencoded", "application/rss+xml",
+            "application/atom+xml", "application/ld+json", "application/manifest+json",
+            "application/vnd.apple.mpegurl", "application/x-mpegurl", "application/mpegurl",
+            "image/svg+xml",
+        )
+
+        /** 无明确 Content-Type 时按 URL 扩展名识别二进制资源。 */
+        private val BINARY_EXTENSIONS = setOf(
+            "jpg", "jpeg", "png", "gif", "webp", "bmp", "ico", "avif",
+            "mp3", "m4a", "aac", "flac", "ogg", "wav",
+            "mp4", "ts", "mov", "mkv", "avi", "webm", "flv", "m4s",
+            "zip", "rar", "7z", "tar", "gz", "apk", "epub", "pdf", "mobi", "azw3",
+            "woff", "woff2", "ttf", "otf", "exe", "dmg",
+        )
+
+        /** 判断响应是否为二进制内容(图片/音视频/文件等),文本页面与数据接口返回 false。 */
+        fun isBinaryContent(contentType: String?, url: String): Boolean {
+            val ct = contentType?.substringBefore(';')?.trim()?.lowercase().orEmpty()
+            if (ct.isNotEmpty() && ct != "application/octet-stream" && ct != "binary/octet-stream") {
+                if (ct.startsWith("text/")) return false
+                if (ct in TEXTUAL_TYPES) return false
+                if (ct.endsWith("+json") || ct.endsWith("+xml")) return false
+                return true
+            }
+            val path = url.substringBefore('?').substringBefore('#').substringAfterLast('/')
+            val ext = path.substringAfterLast('.', "").lowercase()
+            return ext in BINARY_EXTENSIONS
+        }
     }
 }

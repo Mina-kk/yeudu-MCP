@@ -1,5 +1,6 @@
 package com.mina.legadostudio.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -242,6 +243,8 @@ fun LogsScreen() {
 /** HTTP 事务详情页：独占滚动容器，长按可选中复制 */
 @Composable
 private fun HttpLogDetail(log: HttpLogEntity, onBack: () -> Unit) {
+    // 系统返回键/手势只关闭详情层，回到日志列表，不触发外层“回首页”逻辑
+    BackHandler(onBack = onBack)
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         SelectionContainer {
             Column(

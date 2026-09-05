@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -41,6 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.mina.legadostudio.StudioApplication
 import com.mina.legadostudio.ui.theme.GlassTopBar
+import com.mina.legadostudio.ui.theme.studioChipBorder
+import com.mina.legadostudio.ui.theme.studioChipColors
+import com.mina.legadostudio.ui.theme.studioTopInset
 import kotlinx.coroutines.launch
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -59,9 +62,9 @@ fun VerificationCenterScreen(onBack: (() -> Unit)? = null) {
     LaunchedEffect(selected?.id) { currentUrl = selected?.finalUrl?.takeIf { it.isNotBlank() } ?: selected?.url.orEmpty() }
 
     Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().padding(top = 64.dp)) {
+        Column(Modifier.fillMaxSize().padding(top = 64.dp + studioTopInset()).navigationBarsPadding()) {
             LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(sessions, key = { it.id }) { session -> FilterChip(selected = session.id == selected?.id, onClick = { selectedId = session.id }, label = { Text("${session.domain.ifBlank { "验证" }} · ${if (session.status == "COMPLETED") "已完成" else "等待"}") }) }
+                items(sessions, key = { it.id }) { session -> FilterChip(selected = session.id == selected?.id, onClick = { selectedId = session.id }, label = { Text("${session.domain.ifBlank { "验证" }} · ${if (session.status == "COMPLETED") "已完成" else "等待"}") }, colors = studioChipColors(), border = studioChipBorder(session.id == selected?.id)) }
             }
             if (selected == null) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -40,6 +40,8 @@ import com.mina.legadostudio.domain.SourceGroup
 import com.mina.legadostudio.export.ReaderCatalog
 import com.mina.legadostudio.ui.theme.GlassCard
 import com.mina.legadostudio.ui.theme.GlassTopBar
+import com.mina.legadostudio.ui.theme.studioBottomInset
+import com.mina.legadostudio.ui.theme.studioTopInset
 import com.mina.legadostudio.ui.theme.LocalStudioHaze
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
@@ -71,7 +73,7 @@ fun SourcesScreen() {
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
             Modifier.fillMaxSize().then(if (haze != null) Modifier.hazeSource(haze) else Modifier),
-            contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 72.dp, bottom = 108.dp),
+            contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 72.dp + studioTopInset(), bottom = 108.dp + studioBottomInset()),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {

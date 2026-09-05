@@ -1,11 +1,8 @@
 package com.mina.legadostudio.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,8 +50,11 @@ private val tabs = listOf(
     StudioTab("logs", "日志", Icons.AutoMirrored.Outlined.ReceiptLong),
 )
 
+// 通知/外部深链仅允许进入以下路由，未知路由一律忽略并停留在默认 MCP 页
+private val allowedDeepLinkRoutes = setOf("mcp", "sources", "skills", "logs", "verification")
+
 @Composable
-fun StudioApp(initialJobId: String? = null, initialRoute: String? = null, deepLinkNonce: Int = 0, onExit: () -> Unit) {
+fun StudioApp(initialRoute: String? = null, deepLinkNonce: Int = 0, onExit: () -> Unit) {
     StudioTheme {
         ProvideStudioHaze {
             val nav = rememberNavController()
@@ -62,7 +62,7 @@ fun StudioApp(initialJobId: String? = null, initialRoute: String? = null, deepLi
             var confirmExit by remember { mutableStateOf(false) }
             var stopMcpOnExit by remember { mutableStateOf(false) }
             LaunchedEffect(initialRoute, deepLinkNonce) {
-                if (!initialRoute.isNullOrBlank()) nav.navigate(initialRoute)
+                if (!initialRoute.isNullOrBlank() && initialRoute in allowedDeepLinkRoutes) nav.navigate(initialRoute)
             }
             val backEntry by nav.currentBackStackEntryAsState()
             val route = backEntry?.destination?.route.orEmpty()
@@ -72,10 +72,11 @@ fun StudioApp(initialJobId: String? = null, initialRoute: String? = null, deepLi
                     nav,
                     startDestination = "mcp",
                     modifier = Modifier.fillMaxSize(),
-                    enterTransition = { fadeIn(tween(220)) + slideInHorizontally(tween(220)) { it / 12 } },
-                    exitTransition = { fadeOut(tween(220)) },
-                    popEnterTransition = { fadeIn(tween(220)) },
-                    popExitTransition = { fadeOut(tween(220)) + slideOutHorizontally(tween(220)) { it / 12 } },
+                    // 即时切换：避免淡入/滑动过程中半透明帧造成闪屏
+                    enterTransition = { EnterTransition.None },
+                    exitTransition = { ExitTransition.None },
+                    popEnterTransition = { EnterTransition.None },
+                    popExitTransition = { ExitTransition.None },
                 ) {
                     composable("mcp") { McpStatusScreen(onOpenVerification = { nav.navigate("verification") }) }
                     composable("sources") { SourcesScreen() }

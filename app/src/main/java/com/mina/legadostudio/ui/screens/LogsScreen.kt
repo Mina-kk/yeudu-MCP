@@ -1,5 +1,6 @@
 package com.mina.legadostudio.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -12,7 +13,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.AlertDialog
@@ -39,10 +43,15 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mina.legadostudio.StudioApplication
+import com.mina.legadostudio.data.db.HttpLogEntity
 import com.mina.legadostudio.diagnostic.CrashItem
 import com.mina.legadostudio.ui.theme.GlassCard
 import com.mina.legadostudio.ui.theme.GlassTopBar
 import com.mina.legadostudio.ui.theme.LocalStudioHaze
+import com.mina.legadostudio.ui.theme.studioBottomInset
+import com.mina.legadostudio.ui.theme.studioChipBorder
+import com.mina.legadostudio.ui.theme.studioChipColors
+import com.mina.legadostudio.ui.theme.studioTopInset
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 import java.text.DateFormat
@@ -64,13 +73,26 @@ fun LogsScreen() {
     var tab by remember { mutableStateOf(LogsTab.OPERATION) }
     var selected by remember { mutableStateOf(setOf<String>()) }
     var expanded by remember { mutableStateOf<String?>(null) }
+    var viewingHttpId by remember { mutableStateOf<Long?>(null) }
     var recording by remember { mutableStateOf(app.httpLogs.enabled) }
     var pendingDelete by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
+    val listState = rememberLazyListState()
 
     LaunchedEffect(tab) {
         selected = emptySet()
         expanded = null
+        viewingHttpId = null
+    }
+
+    // 制作书源时新 HTTP 记录会持续插入到顶部：
+    // 用户停留在顶部时自动跟随最新一条；已下翻浏览历史时保持原位不打断
+    LaunchedEffect(tab, httpLogs.firstOrNull()?.id) {
+        if (tab == LogsTab.HTTP && viewingHttpId == null &&
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 48
+        ) {
+            listState.scrollToItem(0)
+        }
     }
 
     val ids = when (tab) {
@@ -104,7 +126,7 @@ fun LogsScreen() {
     }
 
     Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().padding(top = 64.dp)) {
+        Column(Modifier.fillMaxSize().padding(top = 64.dp + studioTopInset())) {
             Row(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -120,6 +142,8 @@ fun LogsScreen() {
                         selected = on,
                         onClick = { tab = value },
                         label = { Text(label) },
+                        colors = studioChipColors(),
+                        border = studioChipBorder(on),
                         leadingIcon = if (on) {
                             { Icon(Icons.Outlined.Check, contentDescription = null) }
                         } else null,
@@ -152,7 +176,8 @@ fun LogsScreen() {
             }
             LazyColumn(
                 Modifier.fillMaxSize().then(if (haze != null) Modifier.hazeSource(haze) else Modifier),
-                contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 108.dp),
+                state = listState,
+                contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 108.dp + studioBottomInset()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 when (tab) {
@@ -168,17 +193,12 @@ fun LogsScreen() {
                     LogsTab.HTTP -> if (httpLogs.isEmpty()) item { EmptyHint("暂无 HTTP 事务记录。") }
                     else items(httpLogs, key = { it.id }) { log ->
                         val id = log.id.toString()
-                        LogRow(id, selected, ::toggle, { expanded = if (expanded == id) null else id }) {
-                            Text("${log.method} ${log.url}", fontWeight = FontWeight.SemiBold)
-                            Text("${log.statusCode} · ${log.durationMs}ms${log.error.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}", style = MaterialTheme.typography.bodySmall)
-                            if (expanded == id) Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text("最终 URL: ${log.finalUrl}", style = MaterialTheme.typography.bodySmall)
-                                if (log.redirectChain != "[]") Text("重定向链: ${log.redirectChain}", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
-                                Text("请求头: ${log.requestHeaders}", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
-                                if (log.requestBody.isNotBlank()) Text("请求体:\n${log.requestBody}", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
-                                Text("响应头: ${log.responseHeaders}", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
-                                if (log.responseBody.isNotBlank()) Text("响应体:\n${log.responseBody}", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
-                            }
+                        LogRow(id, selected, ::toggle, { viewingHttpId = log.id }) {
+                            Text("${log.method} ${log.url}", fontWeight = FontWeight.SemiBold, maxLines = 2)
+                            Text(
+                                "${log.statusCode} · ${log.durationMs}ms · ${formatTime(log.createdAt)}${log.error.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
                         }
                     }
                     LogsTab.CRASH -> if (crashes.isEmpty()) item { EmptyHint("暂无崩溃记录。") }
@@ -203,6 +223,13 @@ fun LogsScreen() {
             TextButton(onClick = { pendingDelete = true }, enabled = selected.isNotEmpty()) { Text("删除") }
         }, modifier = Modifier.align(Alignment.TopCenter))
     }
+
+    // HTTP 详情：独立全屏层 + 自身滚动，查看时不受列表新增/滑动影响
+    val viewingLog = httpLogs.firstOrNull { it.id == viewingHttpId }
+    if (viewingLog != null) {
+        HttpLogDetail(log = viewingLog, onBack = { viewingHttpId = null })
+    }
+
     if (pendingDelete) AlertDialog(
         onDismissRequest = { pendingDelete = false },
         title = { Text("删除 ${selected.size} 条记录") },
@@ -210,6 +237,46 @@ fun LogsScreen() {
         confirmButton = { TextButton(onClick = { pendingDelete = false; deleteSelected() }) { Text("删除") } },
         dismissButton = { TextButton(onClick = { pendingDelete = false }) { Text("取消") } },
     )
+}
+
+/** HTTP 事务详情页：独占滚动容器，长按可选中复制 */
+@Composable
+private fun HttpLogDetail(log: HttpLogEntity, onBack: () -> Unit) {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        SelectionContainer {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(top = 64.dp + studioTopInset(), bottom = 16.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("${log.method} ${log.url}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "时间：${formatTime(log.createdAt)} · 状态：${log.statusCode} · 耗时：${log.durationMs}ms",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (log.error.isNotBlank()) Text("错误：${log.error}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                DetailBlock("最终 URL", log.finalUrl)
+                if (log.redirectChain != "[]") DetailBlock("重定向链", log.redirectChain)
+                DetailBlock("请求头", log.requestHeaders)
+                if (log.requestBody.isNotBlank()) DetailBlock("请求体", log.requestBody)
+                DetailBlock("响应头", log.responseHeaders)
+                if (log.responseBody.isNotBlank()) DetailBlock("响应体", log.responseBody)
+            }
+        }
+        GlassTopBar("HTTP 详情", onBack = onBack, modifier = Modifier.align(Alignment.TopCenter))
+    }
+}
+
+@Composable
+private fun DetailBlock(label: String, value: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        Text(value, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
+    }
 }
 
 @Composable

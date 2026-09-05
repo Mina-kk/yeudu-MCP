@@ -55,12 +55,16 @@ import com.mina.legadostudio.StudioApplication
 import com.mina.legadostudio.device.DeviceReadiness
 import com.mina.legadostudio.mcp.McpAccess
 import com.mina.legadostudio.mcp.McpConfigStore
+import com.mina.legadostudio.network.RuntimeConfigStore
 import com.mina.legadostudio.service.McpService
 import com.mina.legadostudio.ui.theme.GlassCard
 import com.mina.legadostudio.ui.theme.GlassTopBar
 import com.mina.legadostudio.ui.theme.LocalStudioHaze
+import com.mina.legadostudio.ui.theme.StudioSegmentedControl
 import com.mina.legadostudio.ui.theme.TonalIconBox
+import com.mina.legadostudio.ui.theme.studioBottomInset
 import com.mina.legadostudio.ui.theme.studioFieldColors
+import com.mina.legadostudio.ui.theme.studioTopInset
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -68,7 +72,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun McpStatusScreen(onBack: (() -> Unit)? = null, onOpenVerification: () -> Unit = {}) {
+fun McpStatusScreen(onOpenVerification: () -> Unit = {}) {
     val context = LocalContext.current
     val app = context.applicationContext as StudioApplication
     val haze = LocalStudioHaze.current
@@ -114,7 +118,7 @@ fun McpStatusScreen(onBack: (() -> Unit)? = null, onOpenVerification: () -> Unit
     }
 
     Box(Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.fillMaxSize().then(if (haze != null) Modifier.hazeSource(haze) else Modifier), contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 72.dp, bottom = 108.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(Modifier.fillMaxSize().then(if (haze != null) Modifier.hazeSource(haze) else Modifier), contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 72.dp + studioTopInset(), bottom = 108.dp + studioBottomInset()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (waiting.isNotEmpty()) item {
                 val cs = MaterialTheme.colorScheme
                 GlassCard(fill = cs.tertiaryContainer.copy(alpha = 0.7f), onClick = onOpenVerification) {
@@ -182,19 +186,54 @@ fun McpStatusScreen(onBack: (() -> Unit)? = null, onOpenVerification: () -> Unit
                 }
             }
             item {
+                val cs = MaterialTheme.colorScheme
+                var sourceType by remember { mutableStateOf(app.runtimeConfig.bookSourceType) }
+                GlassCard {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("书源类型", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "选择本次制作的目标类型，保存书源时自动写入 bookSourceType；文本类型下抓取会自动跳过图片、音视频、安装包等二进制资源，避免不相干内容干扰规则编写。",
+                            style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant,
+                        )
+                        StudioSegmentedControl(
+                            options = RuntimeConfigStore.TYPE_NAMES,
+                            selectedIndex = sourceType,
+                            onSelect = { index ->
+                                sourceType = index
+                                app.runtimeConfig.bookSourceType = index
+                            },
+                        )
+                        Text(
+                            when (sourceType) {
+                                1 -> "音频：正文规则产出播放地址，抓取到的媒体资源仅保留 URL 引用"
+                                2 -> "图片：正文保留 <img> 标签列表，抓取时不下载图片本体"
+                                3 -> "文件：正文规则产出下载链接，抓取时不下载文件本体"
+                                4 -> "视频：正文规则产出播放地址，抓取到的媒体资源仅保留 URL 引用"
+                                else -> "文本：抓取时跳过图片、音视频等二进制资源，只返回净化后的正文"
+                            },
+                            style = MaterialTheme.typography.bodySmall, color = cs.primary,
+                        )
+                    }
+                }
+            }
+            item {
                 GlassCard { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("连接参数", style = MaterialTheme.typography.titleMedium)
                     OutlinedTextField(portText, { portText = it }, modifier = Modifier.fillMaxWidth(), label = { Text("端口 1024–65530") }, singleLine = true, colors = studioFieldColors())
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text("访问令牌校验"); Switch(tokenRequired, { tokenRequired = it }) }
-                    OutlinedTextField(token, { token = it }, modifier = Modifier.fillMaxWidth(), label = { Text("访问令牌") }, singleLine = true, colors = studioFieldColors())
+                    if (tokenRequired) OutlinedTextField(token, { token = it }, modifier = Modifier.fillMaxWidth(), label = { Text("访问令牌") }, singleLine = true, colors = studioFieldColors())
                     Button(onClick = {
-                        val port = portText.toIntOrNull() ?: McpConfigStore.DEFAULT_PORT
-                        runCatching {
-                            McpConfigStore(context).save(McpConfigStore.Config(port, tokenRequired, token))
-                            if (running) McpService.restart(context)
-                            configMessage = "参数已保存"
-                            scope.launch { refresh() }
-                        }.onFailure { configMessage = it.message.orEmpty() }
+                        val port = portText.toIntOrNull()
+                        when {
+                            port == null || port !in 1024..65530 -> configMessage = "端口需为 1024–65530 之间的整数"
+                            tokenRequired && token.isBlank() -> configMessage = "已开启访问令牌校验，请填写访问令牌"
+                            else -> runCatching {
+                                McpConfigStore(context).save(McpConfigStore.Config(port, tokenRequired, token))
+                                if (running) McpService.restart(context)
+                                configMessage = "参数已保存"
+                                scope.launch { refresh() }
+                            }.onFailure { configMessage = "保存失败：${it.message ?: "未知错误"}" }
+                        }
                     }, modifier = Modifier.fillMaxWidth()) { Text("保存并重载") }
                     if (configMessage.isNotBlank()) Text(configMessage, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
                 } }
@@ -212,7 +251,7 @@ fun McpStatusScreen(onBack: (() -> Unit)? = null, onOpenVerification: () -> Unit
             item { OutlinedButton(onClick = { DeviceReadiness(context).openAutoStart() }, modifier = Modifier.fillMaxWidth()) { Text("系统自启动管理") } }
             item { Text("仅暴露 127.0.0.1；切换网络无需变更 Endpoint。局域网 IP 仅供参考。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline) }
         }
-        GlassTopBar("MCP 宿主", onBack = onBack, modifier = Modifier.align(Alignment.TopCenter))
+        GlassTopBar("MCP 宿主", modifier = Modifier.align(Alignment.TopCenter))
     }
 }
 

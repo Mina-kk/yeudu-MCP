@@ -70,6 +70,9 @@ class StudioMcpServer(context: Context) {
                 "role" to "mcp-runtime",
                 "runtime" to listOf("official-css", "official-xpath", "official-jsonpath", "official-regex", "official-rhino", "webview"),
                 "ui" to listOf("mcp", "sources", "skills", "logs"),
+                "bookSourceType" to app.runtimeConfig.bookSourceType,
+                "bookSourceTypeName" to com.mina.legadostudio.network.RuntimeConfigStore.typeName(app.runtimeConfig.bookSourceType),
+                "bookSourceTypeHint" to "用户在 MCP 页选择的目标书源类型：0 文本 / 1 音频 / 2 图片 / 3 文件 / 4 视频；save_source 缺省时自动写入该类型，fetch_page 按该类型过滤二进制资源",
             )))
         }
         server.tool("app_status", "读取 MCP、权限、省电、局域网和验证会话状态", ToolSchema(properties = buildJsonObject {}, required = emptyList()), toolAnnotations = readOnly) {
@@ -123,6 +126,9 @@ class StudioMcpServer(context: Context) {
                 val newVersion = req.arguments.bool("newVersion") ?: false
                 val report = app.validator.validate(source); require(report.isValid) { "书源验证未通过：${app.gson.toJson(report.issues)}" }
                 val obj = JsonParser.parseString(source).asJsonObject
+                // 缺省时按用户在 MCP 页选择的目标类型写入 bookSourceType(0 文本/1 音频/2 图片/3 文件/4 视频)
+                if (!obj.has("bookSourceType") || obj.get("bookSourceType").isJsonNull) obj.addProperty("bookSourceType", app.runtimeConfig.bookSourceType)
+                val finalSource = app.gson.toJson(obj)
                 val siteUrl = obj.get("bookSourceUrl").asString.trim().trimEnd('/')
                 val now = System.currentTimeMillis()
                 val existing = if (newVersion) null else app.database.dao().projectBySiteUrl(siteUrl)
@@ -130,7 +136,7 @@ class StudioMcpServer(context: Context) {
                     id = existing?.id ?: java.util.UUID.randomUUID().toString(),
                     name = obj.get("bookSourceName").asString,
                     siteUrl = siteUrl,
-                    sourceJson = source,
+                    sourceJson = finalSource,
                     stage = "VALIDATED",
                     notes = existing?.notes.orEmpty(),
                     createdAt = existing?.createdAt ?: now,
@@ -165,7 +171,7 @@ class StudioMcpServer(context: Context) {
             val report = app.validator.validate(project.sourceJson)
             if (report.isValid) ok(project.sourceJson) else err("书源验证未通过：${app.gson.toJson(report.issues)}")
         }
-        server.tool("fetch_page", "抓取真实网页并返回响应", fetchSchema(), toolAnnotations = openWrite) { req ->
+        server.tool("fetch_page", "抓取真实网页并返回响应；图片/音视频/安装包等二进制资源不返回正文（文本类型直接跳过并提示），避免不相干内容干扰规则编写", fetchSchema(), toolAnnotations = openWrite) { req ->
             runCatching {
                 val input = HttpFetcher.FetchRequest(
                     url = req.arguments.str("url") ?: error("url 不能为空"),

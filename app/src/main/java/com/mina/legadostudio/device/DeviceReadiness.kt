@@ -68,7 +68,6 @@ class DeviceReadiness(private val context: Context) {
         if (!launch(direct)) launch(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
     }
 
-    fun openWifiSettings() = launch(Intent(Settings.ACTION_WIFI_SETTINGS))
     fun openAppDetails() = launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
 
     fun openAutoStart() {

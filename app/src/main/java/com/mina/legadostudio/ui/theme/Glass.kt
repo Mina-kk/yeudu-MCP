@@ -1,166 +1,197 @@
 package com.mina.legadostudio.ui.theme
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldColors
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.materials.CupertinoMaterials
-import dev.chrisbanes.haze.materials.HazeMaterials
 
-/**
- * iOS 简约白玻璃组件库。
- * 真实高斯模糊由 haze 提供（CupertinoMaterials.thin），API < 31 时 haze 自动退化为雾面遮罩。
- * 不使用全屏 blur，只模糊顶栏窄条与悬浮底栏，GPU 开销可控。
- */
-
-/** 全局 Haze 状态：各屏幕滚动列表注册为 hazeSource，顶栏/底栏施加 hazeEffect。 */
 val LocalStudioHaze = compositionLocalOf<HazeState?> { null }
 
-/** 提供全局 Haze 状态。 */
+/** 全局唯一的 HazeState：列表做 hazeSource，悬浮条做 hazeEffect */
 @Composable
 fun ProvideStudioHaze(content: @Composable () -> Unit) {
-    val state = remember { HazeState() }
-    CompositionLocalProvider(LocalStudioHaze provides state, content = content)
+    val state = dev.chrisbanes.haze.rememberHazeState()
+    androidx.compose.runtime.CompositionLocalProvider(LocalStudioHaze provides state, content = content)
 }
 
-/** 顶栏/底栏模糊材质。 */
-@Composable
-private fun glassHazeStyle(): HazeStyle =
-    if (isSystemInDarkTheme()) HazeMaterials.ultraThin() else CupertinoMaterials.thin()
-
-/** 对顶栏/底栏施加模糊；无 HazeState 时退化为雾面纯色。 */
-@Composable
-fun Modifier.glassBar(): Modifier {
-    val haze = LocalStudioHaze.current
-    return if (haze != null) {
-        hazeEffect(state = haze, style = glassHazeStyle())
-    } else {
-        background(MaterialTheme.colorScheme.surface.copy(alpha = if (isSystemInDarkTheme()) 0.86f else 0.92f))
-    }
-}
-
-/** 发丝分割线颜色。 */
-@Composable
-fun hairlineColor(): Color =
-    if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.14f)
-    else Color.Black.copy(alpha = 0.08f)
-
-/** 文本框统一白底 + 发丝描边。 */
-@Composable
-fun studioFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedContainerColor = Color.White,
-    unfocusedContainerColor = Color.White,
-    focusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-)
-
-/** 玻璃面填充色：亮色近白，暗色极薄白雾。 */
-@Composable
-fun glassFill(): Color =
-    if (isSystemInDarkTheme()) Color(0xFF1C1C1E).copy(alpha = 0.78f)
-    else Color.White.copy(alpha = 0.86f)
-
-/** 玻璃卡片：半透明白 + 0.5dp 发丝描边 + 柔和投影。 */
-@Composable
-fun GlassCard(
-    modifier: Modifier = Modifier,
-    shape: Shape = MaterialTheme.shapes.large,
-    fill: Color = glassFill(),
-    onClick: (() -> Unit)? = null,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    val stroke = BorderStroke(0.5.dp, hairlineColor())
-    if (onClick != null) {
-        Surface(onClick = onClick, modifier = modifier, shape = shape, color = fill, border = stroke, shadowElevation = 6.dp) {
-            Column { content() }
-        }
-    } else {
-        Surface(modifier = modifier, shape = shape, color = fill, border = stroke, shadowElevation = 6.dp) {
-            Column { content() }
-        }
-    }
-}
+/** 底部 Tab 定义 */
+data class StudioTab(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
 
 /**
- * iOS 风格顶栏：标题居中，左侧可选 ‹ 返回，底部发丝分割线。
- * 覆盖式使用：内容从其下方滚过，经 haze 实时模糊。
+ * 顶栏/底栏避让用户可交互的系统栏区域（手势条/三键/状态栏）。
+ * 注意：顶栏本身采用液态玻璃背景，内容区域只额外加 navigationBars 避让，
+ * 避免与半透明底栏叠加出双倍的底部留白。
  */
+@Composable
+fun studioTopInset(): Dp = with(LocalDensity.current) { WindowInsets.statusBars.getTop(this).toDp() }
+
+@Composable
+fun studioBottomInset(): Dp = with(LocalDensity.current) { WindowInsets.navigationBars.getBottom(this).toDp() }
+
+/**
+ * 液态玻璃质感（高斯模糊）：
+ * - 白色玻璃：半透明白底 + 柔和白 tint + 24dp 模糊，noise 关掉（噪点会显脏显灰）。
+ * - 深色玻璃：半透明深底 + 黑色 tint，保证夜间文字可读。
+ * 只用于顶栏/底部 Tab 等悬浮条，正文卡片保持纯白以保证阅读清晰。
+ */
+@Composable
+fun liquidGlassStyle(darkTheme: Boolean = isSystemInDarkTheme()): HazeStyle {
+    return if (darkTheme) {
+        HazeStyle(
+            backgroundColor = Color(0xFF1C1C1E),
+            tints = listOf(HazeTint(Color(0xFF1C1C1E).copy(alpha = 0.55f))),
+            blurRadius = 24.dp,
+            noiseFactor = 0f,
+        )
+    } else {
+        HazeStyle(
+            backgroundColor = Color.White,
+            tints = listOf(HazeTint(Color.White.copy(alpha = 0.6f))),
+            blurRadius = 24.dp,
+            noiseFactor = 0f,
+        )
+    }
+}
+
+/** 毛玻璃悬浮条背后衬一层极淡的实色，保证列表滚动经过时文字不糊成一片 */
+private fun glassFallbackColor(darkTheme: Boolean): Color =
+    if (darkTheme) Color(0xD91C1C1E) else Color(0xD9FFFFFF)
+
+@Composable
+fun studioFieldColors(): TextFieldColors = TextFieldDefaults.colors(
+    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+    focusedIndicatorColor = Color.Transparent,
+    unfocusedIndicatorColor = Color.Transparent,
+    disabledIndicatorColor = Color.Transparent,
+)
+
+@Composable
+fun studioChipColors() = FilterChipDefaults.filterChipColors(
+    containerColor = Color.Transparent,
+    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    selectedContainerColor = Color.Transparent,
+    selectedLabelColor = MaterialTheme.colorScheme.primary,
+    selectedLeadingIconColor = MaterialTheme.colorScheme.primary,
+)
+
+@Composable
+fun studioChipBorder(selected: Boolean) = FilterChipDefaults.filterChipBorder(
+    enabled = true,
+    selected = selected,
+    borderColor = MaterialTheme.colorScheme.outline,
+    selectedBorderColor = Color.Transparent,
+)
+
+@Composable
+fun glassFill(): Color = if (isSystemInDarkTheme()) Color(0xFF1C1C1E) else Color.White
+
+/** iOS 风纯白卡片：细圆角 + 柔和投影，无描边、无玻璃噪声。内容自带内边距 */
+@Composable
+fun GlassCard(
+    fill: Color = glassFill(),
+    onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val shape = RoundedCornerShape(22.dp)
+    Column(
+        modifier
+            .shadow(6.dp, shape, spotColor = Color(0x14000000), ambientColor = Color(0x0A000000))
+            .clip(shape)
+            .background(fill)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+    ) { content() }
+}
+
+/** 顶部标题栏：液态玻璃（高斯模糊）+ 极细分隔线，并避让状态栏 */
 @Composable
 fun GlassTopBar(
     title: String,
-    modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
-    actions: (@Composable RowScope.() -> Unit)? = null,
+    actions: (@Composable androidx.compose.foundation.layout.RowScope.() -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
-    Column(modifier.fillMaxWidth().glassBar()) {
-        Box(Modifier.fillMaxWidth().height(56.dp)) {
+    val haze = LocalStudioHaze.current
+    val hairline = MaterialTheme.colorScheme.outline.copy(alpha = 0.22f)
+    Column(
+        modifier
+            .fillMaxWidth()
+            .background(glassFallbackColor(isSystemInDarkTheme()))
+            .then(if (haze != null) Modifier.hazeEffect(state = haze, style = liquidGlassStyle()) else Modifier)
+            .statusBarsPadding()
+            .drawBehind {
+                drawLine(
+                    color = hairline,
+                    start = Offset(0f, size.height - 0.5.dp.toPx()),
+                    end = Offset(size.width, size.height - 0.5.dp.toPx()),
+                    strokeWidth = 0.5.dp.toPx(),
+                )
+            },
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .padding(horizontal = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             if (onBack != null) {
-                Text(
-                    "‹ 返回",
-                    Modifier.align(Alignment.CenterStart)
-                        .clickable(onClick = onBack)
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.titleMedium,
-                )
+                androidx.compose.material3.IconButton(onClick = onBack) {
+                    androidx.compose.material3.Icon(
+                        Icons.AutoMirrored.Outlined.ArrowBack,
+                        contentDescription = "返回",
+                    )
+                }
+            } else {
+                androidx.compose.foundation.layout.Spacer(Modifier.padding(start = 12.dp))
             }
-            Text(
-                title,
-                Modifier.align(Alignment.Center),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-            )
-            if (actions != null) {
-                Row(
-                    Modifier.align(Alignment.CenterEnd).padding(end = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    content = actions,
-                )
-            }
+            Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            if (actions != null) actions()
         }
-        Box(Modifier.fillMaxWidth().height(0.5.dp).background(hairlineColor()))
     }
 }
 
-/** 底栏项。 */
-data class StudioTab(val route: String, val label: String, val icon: ImageVector)
-
-/** 悬浮胶囊底栏（毛玻璃）。选中色 180ms 动画。 */
+/** 底部 Tab：iOS 风液态玻璃胶囊（高斯模糊 + 白色高光描边），避让手势条 */
 @Composable
 fun GlassTabBar(
     tabs: List<StudioTab>,
@@ -168,52 +199,116 @@ fun GlassTabBar(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier.padding(horizontal = 18.dp, vertical = 12.dp).fillMaxWidth(),
-        shape = RoundedCornerShape(30.dp),
-        color = glassFill(),
-        border = BorderStroke(0.5.dp, hairlineColor()),
-        shadowElevation = 10.dp,
-    ) {
-        val haze = LocalStudioHaze.current
-        Row(
-            Modifier.fillMaxWidth()
-                .then(if (haze != null) Modifier.hazeEffect(state = haze, style = glassHazeStyle()) else Modifier)
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            tabs.forEach { tab ->
-                val selected = tab.route == current
-                val tint by animateColorAsState(
-                    if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    animationSpec = tween(180),
-                    label = "tabTint",
+    val haze = LocalStudioHaze.current
+    val dark = isSystemInDarkTheme()
+    val pillShape = RoundedCornerShape(30.dp)
+    val rim = if (dark) Color(0x33FFFFFF) else Color(0x99FFFFFF)
+    Row(
+        modifier
+            .padding(horizontal = 16.dp)
+            .navigationBarsPadding()
+            .padding(bottom = 10.dp)
+            .fillMaxWidth()
+            .height(64.dp)
+            .shadow(12.dp, pillShape, spotColor = Color(0x1F000000), ambientColor = Color(0x0F000000))
+            .clip(pillShape)
+            .background(glassFallbackColor(dark))
+            .then(if (haze != null) Modifier.hazeEffect(state = haze, style = liquidGlassStyle(dark)) else Modifier)
+            .drawBehind {
+                // 顶部一道玻璃高光，模拟液态玻璃的折射边
+                drawLine(
+                    color = rim,
+                    start = Offset(18.dp.toPx(), 0.75.dp.toPx()),
+                    end = Offset(size.width - 18.dp.toPx(), 0.75.dp.toPx()),
+                    strokeWidth = 1.dp.toPx(),
                 )
-                Column(
-                    Modifier.clickable { onSelect(tab.route) }.padding(horizontal = 14.dp, vertical = 6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Icon(tab.icon, contentDescription = tab.label, tint = tint, modifier = Modifier.size(22.dp))
-                    Text(tab.label, color = tint, style = MaterialTheme.typography.labelSmall)
-                }
+            },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        tabs.forEach { tab ->
+            val selected = tab.route == current
+            val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            Column(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(22.dp))
+                    .clickable { onSelect(tab.route) }
+                    .padding(vertical = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                androidx.compose.material3.Icon(tab.icon, contentDescription = tab.label, tint = tint)
+                Text(tab.label, style = MaterialTheme.typography.labelSmall, color = tint)
             }
         }
     }
 }
 
-/** 圆角色块图标座，用于列表与卡片头部。 */
+/** 方形柔和底色的图标容器（iOS 设置页风格） */
 @Composable
 fun TonalIconBox(
-    icon: ImageVector,
-    container: Color,
-    tint: Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    containerColor: Color,
+    contentColor: Color,
+    size: Int = 44,
     modifier: Modifier = Modifier,
-    size: Int = 46,
 ) {
     Box(
-        modifier.size(size.dp).background(container, MaterialTheme.shapes.small),
+        modifier
+            .size(size.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(containerColor),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = tint)
+        androidx.compose.material3.Icon(icon, contentDescription = null, tint = contentColor)
+    }
+}
+
+/** iOS 风分段选择器：圆角滑块 + 等宽分段，用于书源类型等单选开关 */
+@Composable
+fun StudioSegmentedControl(
+    options: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val trackShape = RoundedCornerShape(12.dp)
+    val thumbShape = RoundedCornerShape(9.dp)
+    Row(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = 40.dp)
+            .clip(trackShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        options.forEachIndexed { index, label ->
+            val selected = index == selectedIndex
+            Box(
+                Modifier
+                    .weight(1f)
+                    .heightIn(min = 36.dp)
+                    .then(
+                        if (selected) {
+                            Modifier
+                                .shadow(2.dp, thumbShape, spotColor = Color(0x1A000000), ambientColor = Color(0x0D000000))
+                                .clip(thumbShape)
+                                .background(glassFill())
+                        } else {
+                            Modifier.clip(thumbShape)
+                        },
+                    )
+                    .clickable { onSelect(index) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }

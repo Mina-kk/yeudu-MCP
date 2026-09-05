@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "id": "Legado书源编码处理指南.md",
+      "path": "knowledge/Legado书源编码处理指南.md",
+      "bytes": 7495
+    },
+    {
+      "id": "css选择器规则.txt",
+      "path": "knowledge/css选择器规则.txt",
+      "bytes": 80146
+    },
+    {
+      "id": "书源输出模板_严格模式.md",
+      "path": "knowledge/书源输出模板_严格模式.md",
+      "bytes": 18832
+    },
+    {
+      "id": "真实书源模板库.txt",
+      "path": "knowledge/真实书源模板库.txt",
+      "bytes": 8199
+    }
+  ]
+}

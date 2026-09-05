@@ -1,0 +1,310 @@
+# Legado 真实书源模板库
+
+## 📚 真实书源示例
+
+### 示例1：69书吧（Default+XPath）
+
+```json
+{
+  "bookSourceName": "69书吧",
+  "bookSourceUrl": "https://www.69shuba.com",
+  "bookSourceType": 0,
+  "searchUrl": "/modules/article/search.php,{\"method\":\"POST\",\"body\":\"searchkey={{key}}&searchtype=all\",\"charset\":\"gbk\"}",
+  "ruleSearch": {
+    "bookList": "class.newbox@tag.li",
+    "name": "tag.a.0@text",
+    "author": "tag.span.-1@text##.*：",
+    "bookUrl": "tag.a.0@href",
+    "coverUrl": "tag.img@src"
+  },
+  "ruleBookInfo": {
+    "name": "class.booknav2@tag.h1@text",
+    "author": "class.booknav2@tag.a.0@text",
+    "coverUrl": "class.bookimg2@tag.img@src",
+    "intro": "class.navtxt@tag.p.-1@text",
+    "kind": "class.booknav2@tag.a.1@text",
+    "lastChapter": "class.qustime@tag.a@text"
+  },
+  "ruleToc": {
+    "chapterList": "id.catalog@tag.li",
+    "chapterName": "tag.a@text",
+    "chapterUrl": "tag.a@href"
+  },
+  "ruleContent": {
+    "content": "class.txtnav@html##<p>.*?</p>|<script[\\s\\S]*?</script>"
+  }
+}
+```
+
+### 示例2：笔趣阁（Default推荐）
+
+```json
+{
+  "bookSourceName": "笔趣阁",
+  "bookSourceUrl": "https://www.biquge.com",
+  "bookSourceType": 0,
+  "searchUrl": "/search.php?q={{key}}",
+  "ruleSearch": {
+    "bookList": "class.result-list@class.result-item",
+    "name": "class.result-game-item-title-link@text",
+    "author": "@css:.result-game-item-info-tag:nth-child(1)@text##作\\s*者：",
+    "bookUrl": "class.result-game-item-title-link@href",
+    "coverUrl": "class.result-game-item-pic@tag.img@src",
+    "intro": "class.result-game-item-desc@text"
+  },
+  "ruleBookInfo": {
+    "name": "id.info@tag.h1@text",
+    "author": "@css:#info p:nth-child(1)@text##作.*?：",
+    "coverUrl": "id.fmimg@tag.img@src",
+    "intro": "id.intro@text",
+    "lastChapter": "@css:#info p:nth-child(4) a@text"
+  },
+  "ruleToc": {
+    "chapterList": "id.list@tag.dd@tag.a",
+    "chapterName": "text",
+    "chapterUrl": "href"
+  },
+  "ruleContent": {
+    "content": "id.content@html##<script[\\s\\S]*?</script>|请收藏.*"
+  }
+}
+```
+
+### 示例3：起点中文网（JSONPath）
+
+```json
+{
+  "bookSourceName": "起点中文网",
+  "bookSourceUrl": "https://m.qidian.com",
+  "bookSourceType": 0,
+  "searchUrl": "https://m.qidian.com/majax/search/list?kw={{key}}&pageNum={{page}}",
+  "ruleSearch": {
+    "bookList": "$.data.records",
+    "name": "$.bName",
+    "author": "$.bAuth",
+    "bookUrl": "https://m.qidian.com/book/{{$.bid}}",
+    "coverUrl": "https://bookcover.yuewen.com/qdbimg/349573/{{$.bid}}/150",
+    "intro": "$.desc",
+    "kind": "$.cat"
+  },
+  "ruleBookInfo": {
+    "tocUrl": "/ajax/book/category?bookId=@css:meta[property=\"og:url\"]@content##.*/",
+    "init": "@json:$.data"
+  },
+  "ruleToc": {
+    "chapterList": "$.data.vs[*].cs[*]",
+    "chapterName": "$.cN",
+    "chapterUrl": "https://m.qidian.com/book/{{$.bid}}/{{$.id}}"
+  },
+  "ruleContent": {
+    "content": "$.data.content",
+    "sourceRegex": "m\\.qidian\\.com/majax/chapter/getChapterInfo"
+  }
+}
+```
+
+### 示例4：新笔趣阁（XPath）
+
+```json
+{
+  "bookSourceName": "新笔趣阁",
+  "bookSourceUrl": "https://www.xbiquge.la",
+  "bookSourceType": 0,
+  "searchUrl": "/search.php?keyword={{key}}",
+  "ruleSearch": {
+    "bookList": "//div[@class=\"result-item\"]",
+    "name": "//h3/a/text()",
+    "author": "//p[@class=\"result-game-item-info-tag\"][1]/span[2]/text()",
+    "bookUrl": "//h3/a/@href",
+    "coverUrl": "//img/@src",
+    "intro": "//p[@class=\"result-game-item-desc\"]/text()"
+  },
+  "ruleBookInfo": {
+    "name": "//div[@id=\"info\"]/h1/text()",
+    "author": "//div[@id=\"info\"]/p[1]/a/text()",
+    "coverUrl": "//div[@id=\"fmimg\"]/img/@src",
+    "intro": "//div[@id=\"intro\"]/p/text()",
+    "lastChapter": "//div[@id=\"info\"]/p[4]/a/text()"
+  },
+  "ruleToc": {
+    "chapterList": "//div[@id=\"list\"]/dl/dd/a",
+    "chapterName": "/text()",
+    "chapterUrl": "/@href"
+  },
+  "ruleContent": {
+    "content": "//div[@id=\"content\"]",
+    "replaceRegex": "##一秒记住.*|##请收藏本站.*"
+  }
+}
+```
+
+### 示例5：猫耳FM（有声书嗅探）
+
+```json
+{
+  "bookSourceName": "猫耳FM",
+  "bookSourceUrl": "https://www.missevan.com",
+  "bookSourceType": 1,
+  "searchUrl": "https://www.missevan.com/dramaapi/search?s={{key}}&page=1",
+  "ruleSearch": {
+    "bookList": "$.info.Datas",
+    "name": "$.name",
+    "author": "$.author",
+    "bookUrl": "https://www.missevan.com/mdrama/drama/{{$.id}},{\"webView\":true}",
+    "coverUrl": "$.cover",
+    "intro": "$.abstract"
+  },
+  "ruleToc": {
+    "chapterList": "@css:.scroll-list.btn-groups>a",
+    "chapterName": "text",
+    "chapterUrl": "href##$##,{\"webView\":true}"
+  },
+  "ruleContent": {
+    "content": "https://static.missevan.com/{{//*[contains(@class,\"pld-sound-active\")]/@data-soundurl64}}",
+    "sourceRegex": ".*\\.(mp3|m4a).*"
+  }
+}
+```
+
+---
+
+## 📋 书源完整JSON模板
+
+```json
+[
+  {
+    "bookSourceComment": "书源说明",
+    "bookSourceName": "书源名称",
+    "bookSourceGroup": "书源分组",
+    "bookSourceType": 0,
+    "bookSourceUrl": "书源地址",
+    "enabled": true,
+    "enabledExplore": true,
+    "exploreUrl": "",
+    "header": "",
+    "lastUpdateTime": 0,
+    "order": 0,
+    "ruleBookInfo": {
+      "init": "",
+      "name": "",
+      "author": "",
+      "coverUrl": "",
+      "intro": "",
+      "kind": "",
+      "lastChapter": "",
+      "wordCount": "",
+      "updateTime": "",
+      "tocUrl": ""
+    },
+    "ruleContent": {
+      "content": "",
+      "nextContentUrl": "",
+      "replaceRegex": "",
+      "sourceRegex": "",
+      "webJs": ""
+    },
+    "ruleExplore": {
+      "author": "",
+      "bookList": "",
+      "bookUrl": "",
+      "coverUrl": "",
+      "intro": "",
+      "kind": "",
+      "lastChapter": "",
+      "name": ""
+    },
+    "ruleSearch": {
+      "author": "",
+      "bookList": "",
+      "bookUrl": "",
+      "coverUrl": "",
+      "intro": "",
+      "kind": "",
+      "lastChapter": "",
+      "name": ""
+    },
+    "ruleToc": {
+      "chapterList": "",
+      "chapterName": "",
+      "chapterUrl": "",
+      "isVolume": "",
+      "updateTime": "",
+      "nextTocUrl": ""
+    },
+    "searchUrl": "",
+    "userAgent": "",
+    "weight": 0
+  }
+]
+```
+
+---
+
+## 🎯 规则语法选择原则
+
+### ✅ 正确的写法
+
+1. **Default语法（推荐）**：
+   - `class.content@text` - 类选择器
+   - `id.list@text` - ID选择器
+   - `tag.a@href` - 标签选择器
+   - `tag.img@src` - 图片属性
+
+2. **获取属性**：
+   - `tag.img@src` - 获取src属性
+   - `tag.img@data-original` - 获取data-original属性
+   - `tag.a@href` - 获取链接地址
+
+3. **正则表达式**：
+   - `class.content@text##^作者：##` - 删除前缀
+   - `class.content@text##^[^|]*##` - 只保留"|"前面的内容
+
+4. **复杂选择器（使用CSS）**：
+   - `@css:.result-game-item-info-tag:nth-child(1)@text` - 第n个子元素
+   - `@css:#info p:nth-child(4) a@text` - 复杂层级
+
+### ❌ 错误的写法
+
+1. **滥用@css前缀**：
+   - ❌ `@css:.content@text` → ✅ `class.content@text`
+   - ❌ `@css:#list@text` → ✅ `id.list@text`
+   - ❌ `@css:a@href` → ✅ `tag.a@href`
+
+2. **虚构选择器**：
+   - ❌ 不存在的类名或ID
+   - ❌ 凭空想象的结构
+
+---
+
+## 📌 POST请求配置规范
+
+### 简单POST格式
+```
+https://www.example.com/search,{"method":"POST","body":"keyword={{key}}&page={{page}}","charset":"gbk"}
+```
+
+### 复杂POST格式（使用JavaScript）
+```
+@js:
+var headers = {"User-Agent": "Mozilla/5.0..."};
+var body = "keyword=" + String(key) + "&page=" + String(page);
+var option = {"charset": "gbk", "method": "POST", "body": String(body), "headers": headers};
+"https://www.example.com/search," + JSON.stringify(option)
+```
+
+### 关键要点
+1. `body`必须保证是JavaScript的`String`类型
+2. 变量尽量用`String()`强转类型
+3. `charset`为utf-8时可省略
+4. 无特殊情况不需要请求头和webView
+
+---
+
+## ⚠️ 严禁行为
+
+1. ❌ 不访问真实网页就编写规则
+2. ❌ 不基于真实HTML结构编写规则
+3. ❌ 编造选择器
+4. ❌ 滥用@css前缀
+5. ❌ POST请求配置不按规范
+6. ❌ 不处理特殊情况（无封面、懒加载、信息合并）

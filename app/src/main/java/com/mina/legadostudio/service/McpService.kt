@@ -53,6 +53,7 @@ class McpService : Service() {
         if (old != null) Thread { old.stop(0, 80) }.start()
         StudioLog.add("mcp stop", category = "mcp")
         running = false
+        starting = false
         endpoints = emptyList()
         McpStats.resetConnections()
         super.onDestroy()
@@ -74,10 +75,12 @@ class McpService : Service() {
             }.also { it.start(wait = false) }
             endpoints = McpAccess.endpoints(config.port)
             running = true
+            starting = false
             StudioLog.add("mcp start port=${config.port}", category = "mcp")
             updateNotification()
         } catch (error: Exception) {
             running = false
+            starting = false
             endpoints = emptyList()
             StudioLog.add("mcp start err", "E", "mcp", error.localizedMessage.orEmpty())
             (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
@@ -147,14 +150,25 @@ class McpService : Service() {
         private const val ACTION_COPY = "com.mina.legadostudio.COPY_MCP"
         private const val ACTION_RESTART = "com.mina.legadostudio.RESTART_MCP"
         @Volatile var running = false
+        @Volatile var starting = false
         @Volatile var endpoints: List<String> = emptyList()
 
-        fun start(context: Context) = ContextCompat.startForegroundService(context, Intent(context, McpService::class.java))
-        fun restart(context: Context) = ContextCompat.startForegroundService(context, Intent(context, McpService::class.java).setAction(ACTION_RESTART))
-        fun stop(context: Context) = context.stopService(Intent(context, McpService::class.java))
+        fun start(context: Context) {
+            starting = true
+            ContextCompat.startForegroundService(context, Intent(context, McpService::class.java))
+        }
+        fun restart(context: Context) {
+            starting = true
+            ContextCompat.startForegroundService(context, Intent(context, McpService::class.java).setAction(ACTION_RESTART))
+        }
+        fun stop(context: Context) {
+            starting = false
+            running = false
+            context.stopService(Intent(context, McpService::class.java))
+        }
         fun status(context: Context, includeToken: Boolean = true): Map<String, Any> {
             val config = McpConfigStore(context).load()
-            val base = mutableMapOf<String, Any>("running" to running, "endpoints" to endpoints, "port" to config.port, "tokenRequired" to config.tokenRequired)
+            val base = mutableMapOf<String, Any>("running" to (running || starting), "endpoints" to endpoints, "port" to config.port, "tokenRequired" to config.tokenRequired)
             if (includeToken) base["token"] = config.token
             return base + McpStats.snapshot()
         }

@@ -85,6 +85,7 @@ fun McpStatusScreen(onOpenVerification: () -> Unit = {}) {
     var configMessage by remember { mutableStateOf("") }
     var copied by remember { mutableStateOf("") }
     var healthOk by remember { mutableStateOf(false) }
+    var lanEndpoints by remember { mutableStateOf(emptyList<String>()) }
     var readiness by remember { mutableStateOf(DeviceReadiness(context).inspect((status["port"] as? Int) ?: McpConfigStore.DEFAULT_PORT, status["running"] == true)) }
     val scope = rememberCoroutineScope()
     suspend fun refresh(skipHealth: Boolean = false) {
@@ -92,11 +93,12 @@ fun McpStatusScreen(onOpenVerification: () -> Unit = {}) {
             val next = McpService.status(context)
             val port = (next["port"] as? Int) ?: McpConfigStore.DEFAULT_PORT
             val running = next["running"] == true
-            Triple(next, DeviceReadiness(context).inspect(port, running), running && !skipHealth && DeviceReadiness(context).checkMcpHealth(port))
+            Triple(next, DeviceReadiness(context).inspect(port, running), running && !skipHealth && DeviceReadiness(context).checkMcpHealth(port)) to McpAccess.lanEndpoints(port)
         }
-        status = snapshot.first
-        readiness = snapshot.second
-        healthOk = snapshot.third
+        status = snapshot.first.first
+        readiness = snapshot.first.second
+        healthOk = snapshot.first.third
+        lanEndpoints = snapshot.second
     }
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { scope.launch { refresh() } }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { scope.launch { refresh() } }
@@ -170,6 +172,18 @@ fun McpStatusScreen(onOpenVerification: () -> Unit = {}) {
                         ) {
                             Text("MCP", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
                             Text(endpoint, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
+                            Text("局域网 MCP", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                            Text(
+                                lanEndpoints.firstOrNull() ?: "未连接局域网（同一 Wi-Fi 下可用）",
+                                fontFamily = FontFamily.Monospace,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (lanEndpoints.isEmpty()) cs.onSurfaceVariant else cs.onSurface,
+                            )
+                            Text(
+                                "同一 Wi-Fi 下的设备可用此地址接入；鉴权请求头与本机相同。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = cs.onSurfaceVariant,
+                            )
                             if (tokenRequired) {
                                 Text("鉴权请求头", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
                                 Text(headerLine, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
@@ -179,6 +193,11 @@ fun McpStatusScreen(onOpenVerification: () -> Unit = {}) {
                             OutlinedButton(onClick = { copy("MCP", endpoint) }, modifier = Modifier.weight(1f)) { Icon(Icons.Outlined.ContentCopy, null, Modifier.size(18.dp)); Text("复制 MCP", Modifier.padding(start = 6.dp)) }
                             if (tokenRequired) OutlinedButton(onClick = { copy("鉴权请求头", headerLine) }, modifier = Modifier.weight(1f)) { Text("复制鉴权请求头") }
                         }
+                        OutlinedButton(
+                            onClick = { lanEndpoints.firstOrNull()?.let { copy("局域网 MCP", it) } },
+                            enabled = lanEndpoints.isNotEmpty(),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Icon(Icons.Outlined.ContentCopy, null, Modifier.size(18.dp)); Text("复制局域网 MCP", Modifier.padding(start = 6.dp)) }
                         if (tokenRequired) OutlinedButton(onClick = { copy("访问令牌", token) }, modifier = Modifier.fillMaxWidth()) { Text("复制访问令牌") }
                         if (copied.isNotBlank()) Text(copied, color = cs.primary, style = MaterialTheme.typography.bodySmall)
                         if (running) OutlinedButton(onClick = { McpService.restart(context); scope.launch { refresh() } }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.RestartAlt, null, Modifier.size(18.dp)); Text("重启服务", Modifier.padding(start = 6.dp)) }

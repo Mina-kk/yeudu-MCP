@@ -60,6 +60,8 @@ class UiSurfaceContractTest {
         val source = candidates.first { it.isFile }.readText()
         assertTrue(source.contains("复制 MCP"))
         assertTrue(source.contains("MCP 宿主"))
+        assertTrue(source.contains("复制局域网 MCP"))
+        assertTrue(source.contains("lanEndpoints"))
         assertTrue(source.contains("复制鉴权请求头"))
         assertTrue(source.contains("复制访问令牌"))
         assertTrue(source.contains("tokenHeaderLine"))
@@ -100,6 +102,8 @@ class UiSurfaceContractTest {
         assertFalse(source.contains("exportSelected"))
         assertFalse(source.contains("DiagnosticExporter"))
         assertTrue(source.contains("删除"))
+        assertTrue(source.contains("LocalStudioFullscreen"))
+        assertTrue(source.contains("HttpLogDetail"))
     }
 
     @Test

@@ -45,6 +45,10 @@ import dev.chrisbanes.haze.hazeEffect
 
 val LocalStudioHaze = compositionLocalOf<HazeState?> { null }
 
+/** 全屏覆盖层（如 HTTP 详情）打开时置 true，StudioApp 据此隐藏底部胶囊 */
+val LocalStudioFullscreen = compositionLocalOf<androidx.compose.runtime.MutableState<Boolean>?> { null }
+
+
 /** 全局唯一的 HazeState：列表做 hazeSource，悬浮条做 hazeEffect */
 @Composable
 fun ProvideStudioHaze(content: @Composable () -> Unit) {

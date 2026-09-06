@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +40,7 @@ import com.mina.legadostudio.ui.screens.SkillsScreen
 import com.mina.legadostudio.ui.screens.SourcesScreen
 import com.mina.legadostudio.ui.screens.VerificationCenterScreen
 import com.mina.legadostudio.ui.theme.GlassTabBar
+import com.mina.legadostudio.ui.theme.LocalStudioFullscreen
 import com.mina.legadostudio.ui.theme.ProvideStudioHaze
 import com.mina.legadostudio.ui.theme.StudioTab
 import com.mina.legadostudio.ui.theme.StudioTheme
@@ -61,12 +63,15 @@ fun StudioApp(initialRoute: String? = null, deepLinkNonce: Int = 0, onExit: () -
             val context = LocalContext.current
             var confirmExit by remember { mutableStateOf(false) }
             var stopMcpOnExit by remember { mutableStateOf(false) }
+            val fullscreenOverlay = remember { mutableStateOf(false) }
             LaunchedEffect(initialRoute, deepLinkNonce) {
                 if (!initialRoute.isNullOrBlank() && initialRoute in allowedDeepLinkRoutes) nav.navigate(initialRoute)
             }
             val backEntry by nav.currentBackStackEntryAsState()
             val route = backEntry?.destination?.route.orEmpty()
             BackHandler(route == "mcp") { confirmExit = true }
+            LaunchedEffect(route) { if (route != "logs") fullscreenOverlay.value = false }
+            CompositionLocalProvider(LocalStudioFullscreen provides fullscreenOverlay) {
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                 NavHost(
                     nav,
@@ -84,7 +89,7 @@ fun StudioApp(initialRoute: String? = null, deepLinkNonce: Int = 0, onExit: () -
                     composable("logs") { LogsScreen() }
                     composable("verification") { VerificationCenterScreen(onBack = { nav.popBackStack() }) }
                 }
-                if (route in tabs.map { it.route }) {
+                if (route in tabs.map { it.route } && !fullscreenOverlay.value) {
                     GlassTabBar(
                         tabs = tabs,
                         current = route,
@@ -98,6 +103,7 @@ fun StudioApp(initialRoute: String? = null, deepLinkNonce: Int = 0, onExit: () -
                         modifier = Modifier.align(Alignment.BottomCenter),
                     )
                 }
+            }
             }
             if (confirmExit) AlertDialog(
                 onDismissRequest = { confirmExit = false },

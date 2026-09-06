@@ -23,5 +23,8 @@ object McpAccess {
     // 对外只暴露回环地址，避免切换 Wi-Fi/蜂窝后 IP 变化导致 MCP 客户端断连。
     fun endpoints(port: Int): List<String> = listOf("http://127.0.0.1:$port$PATH")
 
+    fun lanEndpoints(port: Int): List<String> =
+        localAddresses().mapNotNull { it.hostAddress }.map { "http://$it:$port$PATH" }
+
     fun tokenHeaderLine(token: String) = "$TOKEN_HEADER: $token"
 }

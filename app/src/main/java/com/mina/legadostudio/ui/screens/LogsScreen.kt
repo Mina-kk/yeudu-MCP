@@ -30,6 +30,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,6 +49,7 @@ import com.mina.legadostudio.data.db.HttpLogEntity
 import com.mina.legadostudio.diagnostic.CrashItem
 import com.mina.legadostudio.ui.theme.GlassCard
 import com.mina.legadostudio.ui.theme.GlassTopBar
+import com.mina.legadostudio.ui.theme.LocalStudioFullscreen
 import com.mina.legadostudio.ui.theme.LocalStudioHaze
 import com.mina.legadostudio.ui.theme.studioBottomInset
 import com.mina.legadostudio.ui.theme.studioChipBorder
@@ -75,6 +77,11 @@ fun LogsScreen() {
     var selected by remember { mutableStateOf(setOf<String>()) }
     var expanded by remember { mutableStateOf<String?>(null) }
     var viewingHttpId by remember { mutableStateOf<Long?>(null) }
+    val fullscreen = LocalStudioFullscreen.current
+    DisposableEffect(viewingHttpId != null) {
+        fullscreen?.value = viewingHttpId != null
+        onDispose { fullscreen?.value = false }
+    }
     var recording by remember { mutableStateOf(app.httpLogs.enabled) }
     var pendingDelete by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
@@ -250,7 +257,7 @@ private fun HttpLogDetail(log: HttpLogEntity, onBack: () -> Unit) {
             Column(
                 Modifier
                     .fillMaxSize()
-                    .padding(top = 64.dp + studioTopInset(), bottom = 16.dp)
+                    .padding(top = 64.dp + studioTopInset(), bottom = 16.dp + studioBottomInset())
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),

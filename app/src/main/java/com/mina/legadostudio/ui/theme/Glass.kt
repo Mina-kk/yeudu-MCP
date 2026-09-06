@@ -2,7 +2,6 @@ package com.mina.legadostudio.ui.theme
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,11 +76,11 @@ fun studioBottomInset(): Dp = with(LocalDensity.current) { WindowInsets.navigati
  * 只用于顶栏/底部 Tab 等悬浮条，正文卡片保持纯白以保证阅读清晰。
  */
 @Composable
-fun liquidGlassStyle(darkTheme: Boolean = isSystemInDarkTheme()): HazeStyle {
+fun liquidGlassStyle(darkTheme: Boolean = LocalStudioDark.current): HazeStyle {
     return if (darkTheme) {
         HazeStyle(
-            backgroundColor = Color(0xFF1C1C1E),
-            tints = listOf(HazeTint(Color(0xFF1C1C1E).copy(alpha = 0.55f))),
+            backgroundColor = Color(0xFF000000),
+            tints = listOf(HazeTint(Color(0xFF000000).copy(alpha = 0.55f))),
             blurRadius = 24.dp,
             noiseFactor = 0f,
         )
@@ -97,7 +96,7 @@ fun liquidGlassStyle(darkTheme: Boolean = isSystemInDarkTheme()): HazeStyle {
 
 /** 毛玻璃悬浮条背后衬一层极淡的实色，保证列表滚动经过时文字不糊成一片 */
 private fun glassFallbackColor(darkTheme: Boolean): Color =
-    if (darkTheme) Color(0xD91C1C1E) else Color(0xD9FFFFFF)
+    if (darkTheme) Color(0xD9000000) else Color(0xD9FFFFFF)
 
 @Composable
 fun studioFieldColors(): TextFieldColors = TextFieldDefaults.colors(
@@ -127,7 +126,7 @@ fun studioChipBorder(selected: Boolean) = FilterChipDefaults.filterChipBorder(
 )
 
 @Composable
-fun glassFill(): Color = if (isSystemInDarkTheme()) Color(0xFF1C1C1E) else Color.White
+fun glassFill(): Color = if (LocalStudioDark.current) Color(0xFF1C1C1E) else Color.White
 
 /** iOS 风纯白卡片：细圆角 + 柔和投影，无描边、无玻璃噪声。内容自带内边距 */
 @Composable
@@ -160,7 +159,7 @@ fun GlassTopBar(
     Column(
         modifier
             .fillMaxWidth()
-            .background(glassFallbackColor(isSystemInDarkTheme()))
+            .background(glassFallbackColor(LocalStudioDark.current))
             .then(if (haze != null) Modifier.hazeEffect(state = haze, style = liquidGlassStyle()) else Modifier)
             .statusBarsPadding()
             .drawBehind {
@@ -204,7 +203,7 @@ fun GlassTabBar(
     modifier: Modifier = Modifier,
 ) {
     val haze = LocalStudioHaze.current
-    val dark = isSystemInDarkTheme()
+    val dark = LocalStudioDark.current
     val pillShape = RoundedCornerShape(30.dp)
     val rim = if (dark) Color(0x33FFFFFF) else Color(0x99FFFFFF)
     Row(
@@ -284,7 +283,7 @@ fun StudioSegmentedControl(
             .fillMaxWidth()
             .heightIn(min = 40.dp)
             .clip(trackShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(if (LocalStudioDark.current) MaterialTheme.colorScheme.surfaceContainerLowest else MaterialTheme.colorScheme.surfaceVariant)
             .padding(2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -299,7 +298,7 @@ fun StudioSegmentedControl(
                             Modifier
                                 .shadow(2.dp, thumbShape, spotColor = Color(0x1A000000), ambientColor = Color(0x0D000000))
                                 .clip(thumbShape)
-                                .background(glassFill())
+                                .background(if (LocalStudioDark.current) MaterialTheme.colorScheme.surfaceContainerHighest else glassFill())
                         } else {
                             Modifier.clip(thumbShape)
                         },

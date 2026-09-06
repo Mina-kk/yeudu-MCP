@@ -61,6 +61,7 @@ import com.mina.legadostudio.ui.theme.GlassCard
 import com.mina.legadostudio.ui.theme.GlassTopBar
 import com.mina.legadostudio.ui.theme.LocalStudioHaze
 import com.mina.legadostudio.ui.theme.StudioSegmentedControl
+import com.mina.legadostudio.ui.theme.ThemeMode
 import com.mina.legadostudio.ui.theme.TonalIconBox
 import com.mina.legadostudio.ui.theme.studioBottomInset
 import com.mina.legadostudio.ui.theme.studioFieldColors
@@ -72,7 +73,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun McpStatusScreen(onOpenVerification: () -> Unit = {}) {
+fun McpStatusScreen(onOpenVerification: () -> Unit = {}, themeMode: ThemeMode = ThemeMode.SYSTEM, onThemeModeChange: (ThemeMode) -> Unit = {}) {
     val context = LocalContext.current
     val app = context.applicationContext as StudioApplication
     val haze = LocalStudioHaze.current
@@ -201,6 +202,18 @@ fun McpStatusScreen(onOpenVerification: () -> Unit = {}) {
                         if (tokenRequired) OutlinedButton(onClick = { copy("访问令牌", token) }, modifier = Modifier.fillMaxWidth()) { Text("复制访问令牌") }
                         if (copied.isNotBlank()) Text(copied, color = cs.primary, style = MaterialTheme.typography.bodySmall)
                         if (running) OutlinedButton(onClick = { McpService.restart(context); scope.launch { refresh() } }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.RestartAlt, null, Modifier.size(18.dp)); Text("重启服务", Modifier.padding(start = 6.dp)) }
+                    }
+                }
+            }
+            item {
+                GlassCard {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("外观", style = MaterialTheme.typography.titleMedium)
+                        StudioSegmentedControl(
+                            options = ThemeMode.entries.map { it.label },
+                            selectedIndex = ThemeMode.entries.indexOf(themeMode),
+                            onSelect = { index -> onThemeModeChange(ThemeMode.entries[index]) },
+                        )
                     }
                 }
             }

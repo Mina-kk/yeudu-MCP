@@ -26,9 +26,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -41,6 +43,9 @@ import com.mina.legadostudio.ui.screens.SourcesScreen
 import com.mina.legadostudio.ui.screens.VerificationCenterScreen
 import com.mina.legadostudio.ui.theme.GlassTabBar
 import com.mina.legadostudio.ui.theme.LocalStudioFullscreen
+import com.mina.legadostudio.ui.theme.LocalStudioDark
+import com.mina.legadostudio.ui.theme.ThemeMode
+import com.mina.legadostudio.ui.theme.ThemeModeStore
 import com.mina.legadostudio.ui.theme.ProvideStudioHaze
 import com.mina.legadostudio.ui.theme.StudioTab
 import com.mina.legadostudio.ui.theme.StudioTheme
@@ -57,8 +62,20 @@ private val allowedDeepLinkRoutes = setOf("mcp", "sources", "skills", "logs", "v
 
 @Composable
 fun StudioApp(initialRoute: String? = null, deepLinkNonce: Int = 0, onExit: () -> Unit) {
-    StudioTheme {
+    val appContext = LocalContext.current
+    val themeStore = remember { ThemeModeStore(appContext) }
+    var themeMode by remember { mutableStateOf(themeStore.load()) }
+    StudioTheme(mode = themeMode) {
         ProvideStudioHaze {
+            val view = LocalView.current
+            val darkNow = LocalStudioDark.current
+            SideEffect {
+                (view.context as? android.app.Activity)?.window?.let { w ->
+                    val bars = androidx.core.view.WindowCompat.getInsetsController(w, view)
+                    bars.isAppearanceLightStatusBars = !darkNow
+                    bars.isAppearanceLightNavigationBars = !darkNow
+                }
+            }
             val nav = rememberNavController()
             val context = LocalContext.current
             var confirmExit by remember { mutableStateOf(false) }
@@ -83,7 +100,7 @@ fun StudioApp(initialRoute: String? = null, deepLinkNonce: Int = 0, onExit: () -
                     popEnterTransition = { EnterTransition.None },
                     popExitTransition = { ExitTransition.None },
                 ) {
-                    composable("mcp") { McpStatusScreen(onOpenVerification = { nav.navigate("verification") }) }
+                    composable("mcp") { McpStatusScreen(onOpenVerification = { nav.navigate("verification") }, themeMode = themeMode, onThemeModeChange = { themeMode = it; themeStore.save(it) }) }
                     composable("sources") { SourcesScreen() }
                     composable("skills") { SkillsScreen() }
                     composable("logs") { LogsScreen() }

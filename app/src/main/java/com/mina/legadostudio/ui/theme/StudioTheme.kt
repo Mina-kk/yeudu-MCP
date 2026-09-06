@@ -2,7 +2,9 @@ package com.mina.legadostudio.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -98,12 +100,19 @@ private val StudioTypography = Typography(
     titleMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 22.sp),
 )
 
+val LocalStudioDark = androidx.compose.runtime.compositionLocalOf { false }
 @Composable
-fun StudioTheme(content: @Composable () -> Unit) {
+fun StudioTheme(mode: ThemeMode = ThemeMode.SYSTEM, content: @Composable () -> Unit) {
+    val dark = ThemeMode.resolveDark(mode, isSystemInDarkTheme())
+    androidx.compose.runtime.CompositionLocalProvider(LocalStudioDark provides dark) {
+    val scheme = if (dark) Dark else Light
     MaterialTheme(
-        colorScheme = if (isSystemInDarkTheme()) Dark else Light,
+        colorScheme = scheme,
         shapes = StudioShapes,
         typography = StudioTypography,
-        content = content,
-    )
+    ) {
+        // 玻璃系组件均为自绘容器，必须显式下发内容色，否则深色下默认黑字不可见
+        CompositionLocalProvider(LocalContentColor provides scheme.onSurface, content = content)
+    }
+    }
 }
